@@ -7,5 +7,5 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "users")
 data class User(
     @PrimaryKey(autoGenerate = true) val id: Int = 0, // 主キー、オートインクリメント
-    @ColumnInfo(name = "name") val memo: String //ColumnInfoでカラム名を設定
+    @ColumnInfo(name = "name") val name: String //ColumnInfoでカラム名を設定
 )

@@ -21,7 +21,7 @@
             android:layout_height="wrap_content"
             android:ems="10"
             android:inputType="textPersonName"
-            android:hint="メモ入れてね"
+            android:hint="名前"
             android:text="" />
 
         <LinearLayout
@@ -45,7 +45,7 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/memo_textview"
+            android:id="@+id/name_textview"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             app:layout_constraintBottom_toBottomOf="parent"
