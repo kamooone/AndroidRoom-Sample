@@ -5,6 +5,8 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.room.Room
 import com.example.roomsample.data.db.TestDB
 import com.example.roomsample.data.user.User
@@ -12,7 +14,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 
 class MainActivity : AppCompatActivity() {
     private lateinit var editText: EditText
@@ -29,11 +33,14 @@ class MainActivity : AppCompatActivity() {
         load_button = findViewById(R.id.load_button)
         name_textview = findViewById(R.id.name_textview)
 
-        // データベースのセットアップ
-        setupDatabase()
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
 
-        // 読み込み
-        loadDB()
+        // データベースを初期化
+        initDatabase()
 
         // 読み込みボタン押したら読み込む
         load_button.setOnClickListener {
@@ -46,38 +53,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun copyDatabaseFile() {
-        val inputStream = assets.open("test.db")
-        val outputStream = FileOutputStream(getDatabasePath("TestDB"))
-
-        inputStream.use { input ->
-            outputStream.use { output ->
-                input.copyTo(output)
-            }
+    /** データベースを初期化する */
+    private fun initDatabase() {
+        val dbFile = getDatabasePath("test.db")
+        if (!dbFile.exists()) {
+            copyDatabaseFromAssets()
         }
     }
 
-    private fun setupDatabase() {
-        copyDatabaseFile()
-        val databasePath = getDatabasePath("TestDB")
-        val database =
-            Room.databaseBuilder(this@MainActivity, TestDB::class.java, databasePath.absolutePath)
-                .build()
+    /** アセットからデータベースをコピーする */
+    private fun copyDatabaseFromAssets() {
+        val inputStream: InputStream = assets.open("test.db")
+        val outFile: File = getDatabasePath("test.db")
+        outFile.parentFile?.mkdirs()
+        val outputStream = FileOutputStream(outFile)
+
+        val buffer = ByteArray(1024)
+        var length: Int
+        while (inputStream.read(buffer).also { length = it } > 0) {
+            outputStream.write(buffer, 0, length)
+        }
+
+        outputStream.flush()
+        outputStream.close()
+        inputStream.close()
     }
 
     /** データクラスに追加する */
     private fun writeDB() {
         val text = editText.text.toString()
         GlobalScope.launch {
-            // データベース用意。「TestDB」は実際に作られるデータベースのファイルの名前
-            val databasePath = getDatabasePath("TestDB")
-            val database =
-                Room.databaseBuilder(this@MainActivity, TestDB::class.java, databasePath.absolutePath)
-                    .build()
+            val database = Room.databaseBuilder(this@MainActivity, TestDB::class.java, "test.db")
+                .build()
             val dao = database.userDao()
-            // 書き込むデータクラス作る
             val data = User(name = text)
-            // 書き込む
             dao.insert(data)
         }
     }
@@ -85,19 +94,13 @@ class MainActivity : AppCompatActivity() {
     /** データベースから読み込む */
     private fun loadDB() {
         GlobalScope.launch(Dispatchers.Main) {
-            // まっさらに
             name_textview.text = ""
-            // UIスレッドでは実行できないためコルーチン
             val list = withContext(Dispatchers.IO) {
-                // データベース用意
-                val databasePath = getDatabasePath("TestDB")
-                val database =
-                    Room.databaseBuilder(this@MainActivity, TestDB::class.java, databasePath.absolutePath)
-                        .build()
+                val database = Room.databaseBuilder(this@MainActivity, TestDB::class.java, "test.db")
+                    .build()
                 val dao = database.userDao()
                 dao.getAll()
             }
-            // TextViewに表示
             list.forEach {
                 name_textview.append("${it.name}\n")
             }
